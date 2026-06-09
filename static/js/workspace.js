@@ -92,6 +92,9 @@ function _render(data) {
     // Backend supplies the full child path (os.path.join → cross-platform).
     rows += `<div class="workspace-row" data-path="${encodeURIComponent(d.path)}">${_FOLDER_SVG}<span>${uiModule.esc(d.name)}</span></div>`;
   }
+  if (data.truncated) {
+    rows += '<div class="workspace-empty">Too many folders to list. Type or paste a path above to jump in.</div>';
+  }
   if (!data.dirs.length && !data.parent) rows = '<div class="workspace-empty">No subfolders</div>';
   body.innerHTML = rows || '<div class="workspace-empty">No subfolders</div>';
   body.querySelectorAll('.workspace-row').forEach((row) => {

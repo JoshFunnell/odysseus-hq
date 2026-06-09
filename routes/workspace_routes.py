@@ -5,6 +5,11 @@ from fastapi import APIRouter, Request, HTTPException, Query
 from src.auth_helpers import get_current_user
 from src.tool_security import owner_is_admin_or_single_user
 
+# Cap entries returned per directory (mirrors filesystem_tools._CODENAV_MAX_HITS).
+# A huge directory shouldn't dump thousands of rows into the picker; the user can
+# type/paste a path to jump straight in instead.
+_MAX_BROWSE_DIRS = 500
+
 
 def setup_workspace_routes():
     router = APIRouter(prefix="/api/workspace", tags=["workspace"])
@@ -46,11 +51,14 @@ def setup_workspace_routes():
         except (PermissionError, OSError):
             dirs = []
 
+        dirs_sorted = sorted(dirs, key=lambda d: d["name"].lower())
+        truncated = len(dirs_sorted) > _MAX_BROWSE_DIRS
         parent = os.path.dirname(target)
         return {
             "path": target,
             "parent": parent if parent and parent != target else None,
-            "dirs": sorted(dirs, key=lambda d: d["name"].lower()),
+            "dirs": dirs_sorted[:_MAX_BROWSE_DIRS],
+            "truncated": truncated,
         }
 
     return router
