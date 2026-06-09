@@ -145,7 +145,7 @@ FUNCTION_TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": "get_workspace",
-            "description": "Return the absolute path of the active workspace folder the user is working in. read_file/write_file/edit_file/grep/glob/ls are confined to it; bash/python start there (cwd) but are not sandboxed. Call this first when the user refers to 'the project'/'the code'/'this folder' without a path, instead of asking them. Takes no arguments.",
+            "description": "Return the absolute path of the active workspace folder the user is working in. File tools are confined to it; the shell starts there but is not sandboxed. Call this first when the user refers to 'the project'/'the code'/'this folder' without a path, instead of asking them. Takes no arguments.",
             "parameters": {"type": "object", "properties": {}, "required": []}
         }
     },
