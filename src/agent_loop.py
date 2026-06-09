@@ -1905,11 +1905,13 @@ async def stream_agent_loop(
         _relevant_tools = set(ALWAYS_AVAILABLE) | _AGENT_MODE_CORE_TOOLS
         if workspace:
             # An active workspace IS the file-work signal: a vague "look at the
-            # project" means use this folder. Include the file/code tools (incl.
-            # get_workspace) so the agent can act instead of saying it has no
-            # file access. (Owner gating still applies downstream.)
-            _relevant_tools |= _DOMAIN_TOOL_MAP["files"]
-            logger.info("[tool-rag] Low-signal but workspace active; including core + file tools")
+            # project" means explore this folder. Surface only the READ-ONLY file
+            # tools (intersection with the plan-mode read-only allowlist) so the
+            # agent can investigate; write/shell tools stay out until the request
+            # actually calls for them (RAG retrieval adds those on a real ask).
+            from src.tool_security import PLAN_MODE_READONLY_TOOLS
+            _relevant_tools |= (_DOMAIN_TOOL_MAP["files"] & PLAN_MODE_READONLY_TOOLS)
+            logger.info("[tool-rag] Low-signal but workspace active; including read-only file tools")
         else:
             logger.info("[tool-rag] Low-signal agent message; using always-available + core tools")
     if not guide_only and not _relevant_tools:
