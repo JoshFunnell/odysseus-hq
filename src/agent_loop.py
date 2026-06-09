@@ -350,7 +350,7 @@ Edit an EXISTING file by exact string replacement. PREFER this over bash (sed/ec
     "get_workspace": """\
 ```get_workspace
 ```
-Return the absolute path of the active workspace folder. File tools and bash/python are confined to it and run with cwd there, so paths can be RELATIVE to it. Call this first when the user says "the project"/"the code"/"this folder" without a path, instead of asking them. No arguments.""",
+Return the absolute path of the active workspace folder. read_file/write_file/edit_file/grep/glob/ls are CONFINED to it (paths can be RELATIVE to it); bash/python start there (cwd) but are NOT sandboxed. Call this first when the user says "the project"/"the code"/"this folder" without a path, instead of asking them. No arguments.""",
 
     "create_document": """\
 ```create_document

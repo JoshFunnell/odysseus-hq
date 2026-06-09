@@ -380,13 +380,17 @@ class GrepTool:
         return {"output": _truncate(out), "exit_code": 0}
 
 class GetWorkspaceTool:
-    """Report the active workspace folder (no args). When a workspace is set,
-    file tools and bash/python are confined to it and run with cwd there."""
+    """Report the active workspace folder (no args). File tools are confined to
+    it; bash/python start there (cwd) but are NOT sandboxed."""
     async def execute(self, content: str, ctx: dict) -> dict:
         from src.tool_execution import get_active_workspace
         ws = get_active_workspace()
         if ws:
-            return {"output": ws, "exit_code": 0}
+            return {
+                "output": f"{ws}\n(read_file/write_file/edit_file/grep/glob/ls are confined "
+                          f"to this folder; bash/python start here but are not sandboxed.)",
+                "exit_code": 0,
+            }
         return {
             "output": "No workspace is set. File tools use the default allowed roots; "
                       "resolve paths from the user or use absolute paths.",
