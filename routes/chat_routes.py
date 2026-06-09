@@ -458,6 +458,12 @@ def setup_chat_routes(
         # manual form posts that still send plan_mode=true.
         plan_mode = False
         chat_mode = str(form_data.get("mode", "")).lower()  # 'chat' or 'agent'
+        # Workspace: confine the agent's file/shell tools to this folder. Validate
+        # it's a real directory; ignore (no confinement) otherwise.
+        workspace = (form_data.get("workspace") or "").strip()
+        if workspace:
+            _ws_real = os.path.realpath(os.path.expanduser(workspace))
+            workspace = _ws_real if os.path.isdir(_ws_real) else ""
         # Plan mode is a modifier on agent mode — it only makes sense with tools.
         if plan_mode:
             chat_mode = "agent"
@@ -1141,6 +1147,7 @@ def setup_chat_routes(
                         fallbacks=_fallback_candidates,
                         plan_mode=plan_mode,
                         approved_plan=approved_plan or None,
+                        workspace=workspace or None,
                     ):
                         if chunk.startswith("data: ") and not chunk.startswith("data: [DONE]"):
                             try:
