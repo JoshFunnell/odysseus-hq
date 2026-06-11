@@ -1,0 +1,34 @@
+# HQ patch stack for odysseus-hq.
+# hq-custom is ALWAYS rebuilt as: base pin + this tooling + the PR cherry-picks
+# below, in order. To update upstream: bump `base`, run hq/rebuild.sh, test,
+# force-push. Customs and PRs survive because they are declarative here, not
+# merge history.
+base: 218b9ec
+patches:
+  - pr: 3899
+    title: "fix(tokens): owner check on update and delete routes"
+    why: "authz - HQ talks to Odysseus via scoped ody_ tokens"
+  - pr: 3870
+    title: "fix(tool): tool selection access controls"
+    why: "tool access control - HQ policy alignment"
+  - pr: 3539
+    title: "fix(auth): eliminate session orphan-drop and DB/auth skew on user rename"
+    why: "session integrity for long-lived HQ agent sessions"
+  - pr: 2769
+    title: "fix(session): serialize history mutations with a per-session asyncio lock"
+    why: "history integrity under concurrent agent traffic"
+  - pr: 3665
+    title: "feat(agent): confine agent file/shell tools to a selectable workspace"
+    why: "sandbox-first blast radius (docs/84 s9)"
+  - pr: 3281
+    title: "fix: read allow_bash/allow_web_search from JSON body"
+    why: "policy controls must respect the request body"
+  - pr: 3885
+    title: "fix(memory): return complete memory lists"
+    why: "memory correctness for HQ agent recall"
+  - pr: 3886
+    title: "fix(memory): exempt audits from request timeout"
+    why: "memory audit reliability"
+  - pr: 3887
+    title: "fix(memory): resolve audit OAuth credentials"
+    why: "memory audit auth correctness"
