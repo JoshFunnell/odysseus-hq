@@ -300,3 +300,29 @@ def test_browse_marks_root_unselectable_and_vet_endpoint(monkeypatch):
     with pytest.raises(HTTPException) as ei:
         vet(request=object(), path="/tmp")
     assert ei.value.status_code == 403
+
+
+# ── send-time privilege gate (no path oracle for non-admins) ────────────
+
+def test_request_workspace_gate(ws, monkeypatch):
+    """Non-admin chat callers must get a uniform drop with no vetting: the
+    workspace_rejected signal would otherwise reveal which host paths exist."""
+    import routes.chat_routes as cr
+
+    monkeypatch.setattr(cr, "get_current_user", lambda req: "bob")
+    vet_calls = []
+    import src.tool_execution as te
+    real_vet = te.vet_workspace
+    monkeypatch.setattr(te, "vet_workspace", lambda p: vet_calls.append(p) or real_vet(p))
+
+    import src.tool_security as ts
+    monkeypatch.setattr(ts, "owner_is_admin_or_single_user", lambda owner: False)
+    # Valid and invalid paths are indistinguishable for a non-admin: both
+    # drop silently, and the path never reaches the filesystem.
+    assert cr._resolve_request_workspace(object(), ws) == ("", "")
+    assert cr._resolve_request_workspace(object(), "/nonexistent/xyz") == ("", "")
+    assert vet_calls == []
+
+    monkeypatch.setattr(ts, "owner_is_admin_or_single_user", lambda owner: True)
+    assert cr._resolve_request_workspace(object(), ws) == (os.path.realpath(ws), "")
+    assert cr._resolve_request_workspace(object(), "/nonexistent/xyz") == ("", "/nonexistent/xyz")
