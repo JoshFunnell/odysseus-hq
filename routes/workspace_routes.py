@@ -54,11 +54,32 @@ def setup_workspace_routes():
         dirs_sorted = sorted(dirs, key=lambda d: d["name"].lower())
         truncated = len(dirs_sorted) > _MAX_BROWSE_DIRS
         parent = os.path.dirname(target)
+        from src.tool_execution import vet_workspace
         return {
             "path": target,
             "parent": parent if parent and parent != target else None,
             "dirs": dirs_sorted[:_MAX_BROWSE_DIRS],
             "truncated": truncated,
+            # Whether this directory may be bound as a workspace (filesystem
+            # roots and sensitive dirs may be browsed through but not chosen).
+            "selectable": vet_workspace(target) is not None,
         }
+
+    @router.get("/vet")
+    def vet(request: Request, path: str = Query(default="")):
+        """Validate a workspace path without binding it.
+
+        The UI calls this before persisting a manually typed path (/workspace
+        set) so a typo, file path, deleted folder, sensitive dir, or filesystem
+        root is rejected up front with the canonical path returned on success,
+        instead of being stored client-side and silently dropped at chat time.
+        Admin-gated like /browse: it confirms path existence on the host.
+        """
+        owner = get_current_user(request)
+        if not owner_is_admin_or_single_user(owner):
+            raise HTTPException(status_code=403, detail="Workspace selection is admin-only")
+        from src.tool_execution import vet_workspace
+        resolved = vet_workspace(path)
+        return {"ok": resolved is not None, "path": resolved}
 
     return router

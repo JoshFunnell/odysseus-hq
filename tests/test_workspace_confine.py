@@ -267,3 +267,36 @@ def test_vet_workspace_rejects_nondir_and_empty(ws):
     assert vet_workspace("/nonexistent/path/xyz") is None
     assert vet_workspace("") is None
     assert vet_workspace("   ") is None
+
+
+def test_vet_workspace_rejects_filesystem_root():
+    # Binding / would make every absolute path "inside" the workspace,
+    # collapsing confinement into host-wide file access.
+    from src.tool_execution import vet_workspace
+    assert vet_workspace("/") is None
+
+
+def test_browse_marks_root_unselectable_and_vet_endpoint(monkeypatch):
+    import routes.workspace_routes as wr
+
+    router = wr.setup_workspace_routes()
+    browse = next(r.endpoint for r in router.routes if r.path == "/api/workspace/browse")
+    vet = next(r.endpoint for r in router.routes if r.path == "/api/workspace/vet")
+
+    monkeypatch.setattr(wr, "get_current_user", lambda req: "admin")
+    monkeypatch.setattr(wr, "owner_is_admin_or_single_user", lambda owner: True)
+
+    out = browse(request=object(), path="/")
+    assert out["selectable"] is False
+    out = browse(request=object(), path=os.path.expanduser("~"))
+    assert out["selectable"] is True
+
+    assert vet(request=object(), path="/") == {"ok": False, "path": None}
+    home = os.path.realpath(os.path.expanduser("~"))
+    assert vet(request=object(), path="~") == {"ok": True, "path": home}
+
+    from fastapi import HTTPException
+    monkeypatch.setattr(wr, "owner_is_admin_or_single_user", lambda owner: False)
+    with pytest.raises(HTTPException) as ei:
+        vet(request=object(), path="/tmp")
+    assert ei.value.status_code == 403

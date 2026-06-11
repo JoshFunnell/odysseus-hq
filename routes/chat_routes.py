@@ -459,11 +459,15 @@ def setup_chat_routes(
         plan_mode = False
         chat_mode = str(form_data.get("mode", "")).lower()  # 'chat' or 'agent'
         # Workspace: confine the agent's file/shell tools to this folder.
-        # vet_workspace rejects non-directories and sensitive roots (.ssh,
-        # .gnupg, ...); on rejection there is no confinement and the default
-        # tool-path allowlist applies.
+        # vet_workspace rejects non-directories, sensitive roots (.ssh,
+        # .gnupg, ...), and filesystem roots; on rejection there is no
+        # confinement and the default tool-path allowlist applies. The
+        # rejected value is remembered so the stream can tell the client
+        # (which believes a workspace is active) that it was dropped.
         from src.tool_execution import vet_workspace
-        workspace = vet_workspace(form_data.get("workspace") or "") or ""
+        _requested_workspace = (form_data.get("workspace") or "").strip()
+        workspace = vet_workspace(_requested_workspace) or ""
+        workspace_rejected = _requested_workspace if (_requested_workspace and not workspace) else ""
         # Plan mode is a modifier on agent mode — it only makes sense with tools.
         if plan_mode:
             chat_mode = "agent"
@@ -767,6 +771,13 @@ def setup_chat_routes(
 
             # Register active stream for partial-save safety net
             _active_streams[session] = {"status": "streaming", "partial": "", "query": message, "is_research": effective_do_research, "mode": _effective_mode}
+
+            # The client sent a workspace the server refused to bind (deleted
+            # folder, file path, sensitive dir, filesystem root). Tell it up
+            # front so the UI can clear the pill instead of displaying a
+            # confinement that is not actually in effect.
+            if workspace_rejected:
+                yield f"data: {json.dumps({'type': 'workspace_rejected', 'data': {'path': workspace_rejected}})}\n\n"
 
             if ctx.preprocessed.attachment_meta:
                 yield f"data: {json.dumps({'type': 'attachments', 'data': ctx.preprocessed.attachment_meta})}\n\n"

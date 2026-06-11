@@ -248,6 +248,12 @@ def vet_workspace(raw: str) -> Optional[str]:
     resolved = os.path.realpath(os.path.expanduser(raw))
     if not os.path.isdir(resolved) or _is_sensitive_path(resolved):
         return None
+    # Reject filesystem roots: binding / (or a Windows drive/UNC root) as the
+    # workspace would make every absolute path "inside" it, collapsing the
+    # confinement into host-wide file access. A root is its own dirname, which
+    # also covers C:\ and \\server\share without platform-specific lists.
+    if os.path.dirname(resolved) == resolved:
+        return None
     return resolved
 
 

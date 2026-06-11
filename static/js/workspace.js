@@ -63,6 +63,27 @@ export function setWorkspace(path) {
   syncWorkspaceIndicator(path || '');
 }
 
+/**
+ * Validate a manually entered path server-side, then persist the canonical
+ * form. Returns {ok, path|null}. Without this, a typo / file path / deleted
+ * folder / filesystem root would be stored and shown as active while the
+ * backend silently refuses to bind it on every send.
+ */
+export async function vetAndSetWorkspace(path) {
+  try {
+    const res = await fetch(`${API_BASE}/api/workspace/vet?path=${encodeURIComponent(path)}`, { credentials: 'same-origin' });
+    if (!res.ok) return { ok: false, path: null };
+    const data = await res.json();
+    if (data.ok && data.path) {
+      setWorkspace(data.path);
+      return { ok: true, path: data.path };
+    }
+    return { ok: false, path: null };
+  } catch (e) {
+    return { ok: false, path: null };
+  }
+}
+
 export function clearWorkspace() {
   setWorkspace('');
   if (uiModule && uiModule.showToast) uiModule.showToast('Workspace cleared');
@@ -100,6 +121,13 @@ function _render(data) {
   body.querySelectorAll('.workspace-row').forEach((row) => {
     row.addEventListener('click', () => _navigate(decodeURIComponent(row.dataset.path)));
   });
+  // Filesystem roots (and sensitive dirs) can be browsed through but never
+  // bound as the workspace; the backend rejects them too.
+  const useBtn = _modal.querySelector('#workspace-use');
+  if (useBtn) {
+    useBtn.disabled = data.selectable === false;
+    useBtn.title = data.selectable === false ? 'This folder cannot be used as a workspace' : '';
+  }
 }
 
 async function _navigate(path) {
@@ -177,4 +205,4 @@ export function initWorkspace() {
   if (pill) pill.addEventListener('click', clearWorkspace);
 }
 
-export default { initWorkspace, openWorkspaceBrowser, getWorkspace, setWorkspace, clearWorkspace, syncWorkspaceIndicator, applyMode };
+export default { initWorkspace, openWorkspaceBrowser, getWorkspace, setWorkspace, vetAndSetWorkspace, clearWorkspace, syncWorkspaceIndicator, applyMode };
