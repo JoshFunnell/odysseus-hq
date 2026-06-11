@@ -242,3 +242,28 @@ def test_browse_is_admin_gated(monkeypatch):
     out = browse(request=object(), path=os.path.expanduser("~"))
     assert "dirs" in out and "path" in out
     assert all("name" in d and "path" in d for d in out["dirs"])
+
+
+# ── bind-time vetting of the workspace root ─────────────────────────────
+
+def test_vet_workspace_accepts_normal_dir(ws):
+    from src.tool_execution import vet_workspace
+    assert vet_workspace(ws) == os.path.realpath(ws)
+
+
+def test_vet_workspace_rejects_sensitive_root(tmp_path):
+    # The resolver deny-lists sensitive paths inside the workspace, but the
+    # empty-path search root is the workspace itself - a sensitive root must
+    # be rejected before it is bound or `ls` with no path would list it.
+    from src.tool_execution import vet_workspace
+    ssh_dir = tmp_path / ".ssh"
+    ssh_dir.mkdir()
+    assert vet_workspace(str(ssh_dir)) is None
+
+
+def test_vet_workspace_rejects_nondir_and_empty(ws):
+    from src.tool_execution import vet_workspace
+    assert vet_workspace(os.path.join(ws, "a.txt")) is None  # file, not dir
+    assert vet_workspace("/nonexistent/path/xyz") is None
+    assert vet_workspace("") is None
+    assert vet_workspace("   ") is None

@@ -458,12 +458,12 @@ def setup_chat_routes(
         # manual form posts that still send plan_mode=true.
         plan_mode = False
         chat_mode = str(form_data.get("mode", "")).lower()  # 'chat' or 'agent'
-        # Workspace: confine the agent's file/shell tools to this folder. Validate
-        # it's a real directory; ignore (no confinement) otherwise.
-        workspace = (form_data.get("workspace") or "").strip()
-        if workspace:
-            _ws_real = os.path.realpath(os.path.expanduser(workspace))
-            workspace = _ws_real if os.path.isdir(_ws_real) else ""
+        # Workspace: confine the agent's file/shell tools to this folder.
+        # vet_workspace rejects non-directories and sensitive roots (.ssh,
+        # .gnupg, ...); on rejection there is no confinement and the default
+        # tool-path allowlist applies.
+        from src.tool_execution import vet_workspace
+        workspace = vet_workspace(form_data.get("workspace") or "") or ""
         # Plan mode is a modifier on agent mode — it only makes sense with tools.
         if plan_mode:
             chat_mode = "agent"
